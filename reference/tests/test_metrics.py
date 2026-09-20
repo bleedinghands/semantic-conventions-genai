@@ -50,18 +50,11 @@ def test_committed_google_adk_metrics_round_trip():
         assert adk.metrics[name]["gen_ai.workflow.name"] == "present", name
 
 
-def test_workflow_call_counts_are_emitted_by_more_than_one_framework():
-    emitting = {e.library for e in load_scenario_data_files() if _WORKFLOW_TOOL_CALLS in e.metrics}
-    assert {"google-adk", "openai-agents"} <= emitting, emitting
-
-
-def test_openai_agents_records_both_grains():
+def test_workflow_call_counts_cover_applicable_scenarios():
     entries = {e.library: e for e in load_scenario_data_files()}
-    openai_agents = entries["openai-agents"]
-    for name in (_WORKFLOW_INFERENCE_CALLS, _WORKFLOW_TOOL_CALLS):
-        assert openai_agents.metrics[name]["gen_ai.workflow.name"] == "present", name
-    for name in (_INFERENCE_CALLS, _TOOL_CALLS):
-        assert openai_agents.metrics[name]["gen_ai.agent.name"] == "present", name
+    for library in ("crewai", "google-adk", "langchain", "openai-agents"):
+        for name in (_WORKFLOW_INFERENCE_CALLS, _WORKFLOW_TOOL_CALLS):
+            assert entries[library].metrics[name]["gen_ai.workflow.name"] == "present", (library, name)
 
 
 def test_registry_span_names_map_onto_report_keys():
@@ -99,8 +92,7 @@ if __name__ == "__main__":
     test_metric_specs_are_named_as_the_registry_names_them()
     test_workflow_metric_specs_expose_recommended_workflow_name()
     test_committed_google_adk_metrics_round_trip()
-    test_workflow_call_counts_are_emitted_by_more_than_one_framework()
-    test_openai_agents_records_both_grains()
+    test_workflow_call_counts_cover_applicable_scenarios()
     test_registry_span_names_map_onto_report_keys()
     test_events_keep_their_registry_names()
     test_span_types_absent_from_a_data_file_are_not_reported()

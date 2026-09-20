@@ -14,3 +14,8 @@ execution.
 | retrieval | Yes — retriever runs the retrieval | ✅ Implemented |
 | plan | Yes — Plan-and-Execute planning phase | ✅ Implemented |
 | execute_tool | Yes — `BaseTool.invoke()` runs the tool | ✅ Implemented |
+| workflow inference/tool call counts | Yes — graph-scoped model/tool start callbacks | ✅ Implemented |
+
+The outer `Weather graph` invokes the `Weather research` subgraph twice. Each
+subgraph invocation records its own totals; inherited callbacks count both
+invocations in the outer workflow. Counts are recorded even on failure.

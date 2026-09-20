@@ -12,3 +12,7 @@ and is captured as a child span.
 | invoke_workflow | Yes — crew execution (`Crew.kickoff`) | ✅ Implemented |
 | plan | Yes — `CrewPlanner` planning phase | ✅ Implemented |
 | execute_tool | Yes — CrewAI runs the tool | ✅ Implemented |
+| workflow inference/tool call counts | Yes — before-call hooks scoped to `Crew.kickoff` | ✅ Implemented |
+
+The crew run counts model and tool starts with CrewAI hooks filtered to that
+crew. It records both totals on completion or failure and unregisters the hooks.
