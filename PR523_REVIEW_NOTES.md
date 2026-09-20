@@ -13,8 +13,9 @@ when porting the implementation fixes upstream.
   commit `1faaacfb2d0112c9c8ef27d1b6fb0628fc613f14` on `codex/pr523-workflow-call-counts`.
 - [Implementation-only diff, excluding this handoff](https://github.com/bleedinghands/semantic-conventions-genai/compare/ed599428067e89cfa7c0fe07df7853be1dbfd419...1faaacfb2d0112c9c8ef27d1b6fb0628fc613f14).
 
-The fixes touch 18 files: 280 additions and 267 deletions. The upstream PR has not
-been updated, and Copilot has not reassessed these fixes on that PR.
+The implementation commit touches 18 files: 280 additions and 267 deletions.
+Later commits add these review notes and wording-only edits. The upstream PR has
+not been updated, and Copilot has not reassessed these fixes on that PR.
 
 ## Intent and scope
 
@@ -23,9 +24,9 @@ The original PR adds `gen_ai.invoke_workflow.inference_calls` and
 execution. Nested executions contribute to their own and their enclosing
 workflow's totals; summing across workflow names can therefore double count.
 
-Keep that proposal small. The fixes do **not** change metric names, units, buckets,
-registry definitions, or the recommended `gen_ai.workflow.name` dimension. They
-do not add hierarchy attributes, redesign agent metrics, or introduce a shared
+The fixes leave metric names, units, buckets, registry definitions, and the
+recommended `gen_ai.workflow.name` dimension unchanged. They do not add hierarchy
+attributes, redesign agent metrics, or introduce a shared
 instrumentation framework. The original metric documentation, reporting-model
 registration, and changelog entry are retained.
 
@@ -39,9 +40,8 @@ Counting returned responses or events with usage metadata misses calls that fail
 without a response. Recording only after a successful workflow loses the entire
 measurement when execution raises. Exceptions still propagate normally.
 
-These are framework-visible call counts, not a claim to count every hidden HTTP
-retry inside an underlying client. That distinction remains worth checking in
-review.
+These counts cover framework-level calls; retries inside an underlying HTTP
+client may not trigger another callback.
 
 ### 2. OpenAI Agents: simplify the example and fix handoff counting
 
@@ -64,7 +64,7 @@ The existing single-agent/tool example and two-agent handoff workflow remain.
 Removing the PR-added agent metrics keeps this change focused on workflow metrics;
 it does not remove agent metric definitions from the conventions.
 
-### 3. Google ADK: retain coverage with a real workflow
+### 3. Google ADK: use a `SequentialAgent` workflow
 
 In [the scenario](reference/scenarios/google-adk/scenario.py), add
 `run_workflow_reference`: a `SequentialAgent` runs a researcher with a weather tool,
@@ -75,7 +75,7 @@ workflow name supplied to ADK.
 This replaces the PR's workflow-metric recordings based on the old single-agent
 run's usage-event counters. It demonstrates a library-owned multi-agent workflow
 and does not depend on response usage metadata. Existing agent/memory examples
-and their pre-existing agent counters are deliberately not refactored here.
+and their pre-existing agent counters are unchanged.
 
 ### 4. CrewAI: cover the existing workflow
 
@@ -117,7 +117,7 @@ counted as a tool call.
   workflow metrics and `gen_ai.workflow.name` across all four frameworks. Remove
   the requirement for the now-removed OpenAI agent-metric additions.
 
-## Copilot comments and disposition
+## Copilot comments and responses
 
 The original review contains three inline comments and one related suppressed
 comment in its summary. All four concerns were accepted:
@@ -131,8 +131,8 @@ comment in its summary. All four concerns were accepted:
    The older agent-metric implementation remains outside this fix's scope.
 3. [OpenAI `raw_responses` omits failed calls](https://github.com/open-telemetry/semantic-conventions-genai/pull/523#discussion_r4034517654):
    replaced workflow result-length counting with start hooks and `finally`.
-   Other PR-added result-based recordings were removed with the unnecessary
-   agent/nested-example additions, rather than left using the flawed approach.
+   The other result-based recordings were removed with the agent-metric and
+   nested-agent additions.
 4. [Missing CrewAI/LangChain tool coverage (review summary)](https://github.com/open-telemetry/semantic-conventions-genai/pull/523#pullrequestreview-5232817922):
    added tool-start counting alongside inference counting in both frameworks,
    including refreshed data/reports and assertions for both metrics.
@@ -172,9 +172,9 @@ failures in all four frameworks; a failed OpenAI handoff; an ADK tool failure
 without usage metadata; and failed LangGraph calls counted in both nested scopes.
 CrewAI's exercised retry path produced three model-start counts.
 
-Those failure probes were temporary local scripts, **not committed regression
-tests**. The checked-in metric tests validate coverage metadata, not exact runtime
-counts or all failure paths. A reviewer should not treat them as equivalent.
+The failure probes were temporary local scripts, not committed regression tests.
+The checked-in metric tests validate coverage metadata, not runtime counts or
+failure paths.
 
 For a fresh check, run these from the indicated directories:
 
@@ -190,8 +190,6 @@ uv run --extra dev ruff check src scenarios tests
 uv run --extra dev ruff format --check src scenarios
 ```
 
-The main remaining review questions are whether the framework-level callback
-boundaries match the intended definition of a call, whether the nested graph
-example is sufficiently small, and whether permanent runtime regression tests
-are needed in this PR or should be a focused follow-up. No claim is made that
-these reference examples are production-ready instrumentation for every SDK path.
+Remaining review questions: do the callbacks match the intended definition of a
+call, is the nested example small enough, and should this PR include runtime
+regression tests? These reference examples do not cover every SDK path.
