@@ -306,11 +306,68 @@ def run_agent_reference():
         _inference_calls.record(call_counts["inference"], metric_attributes)
         _tool_calls.record(call_counts["tool"], metric_attributes)
 
-        # The same calls at workflow grain, under the name the invoke_workflow
-        # span used. One agent ran under one workflow, so the counts match.
-        workflow_metric_attributes = {"gen_ai.workflow.name": runner.app_name}
-        _workflow_inference_calls.record(call_counts["inference"], workflow_metric_attributes)
-        _workflow_tool_calls.record(call_counts["tool"], workflow_metric_attributes)
+
+def run_workflow_reference():
+    """Count calls across the two agents in an ADK sequential workflow."""
+    from google.adk.agents import Agent, SequentialAgent
+    from google.adk.models.google_llm import Gemini
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+    from google.genai import types
+
+    print("  [workflow] ADK sequential workflow (reference implementation)")
+    os.environ.setdefault("GOOGLE_API_KEY", "mock-key")
+    call_counts = {"inference": 0, "tool": 0}
+
+    def before_model(callback_context, llm_request):
+        # The callback runs before inference, including calls that fail.
+        call_counts["inference"] += 1
+
+    def before_tool(tool, args, tool_context):
+        call_counts["tool"] += 1
+
+    def get_weather(location: str) -> str:
+        """Get the current weather for a location."""
+        return f"Sunny in {location}"
+
+    researcher = Agent(
+        name="weather_researcher",
+        model=Gemini(model="gemini-2.0-flash", base_url=MOCK_BASE_URL),
+        instruction="Use get_weather to find the weather in Seattle.",
+        tools=[get_weather],
+        before_model_callback=before_model,
+        before_tool_callback=before_tool,
+    )
+    writer = Agent(
+        name="weather_writer",
+        model=Gemini(model="gemini-2.0-flash", base_url=MOCK_BASE_URL),
+        instruction="Summarize the weather research.",
+        before_model_callback=before_model,
+    )
+    workflow = SequentialAgent(name="weather_report", sub_agents=[researcher, writer])
+    session_service = InMemorySessionService()
+    runner = Runner(agent=workflow, app_name=workflow.name, session_service=session_service)
+
+    async def _run():
+        session = await session_service.create_session(app_name=runner.app_name, user_id="test_user")
+        with _reference_tracer.start_as_current_span(
+            f"invoke_workflow {runner.app_name}",
+            attributes={"gen_ai.operation.name": "invoke_workflow", "gen_ai.workflow.name": runner.app_name},
+        ):
+            try:
+                async for _event in runner.run_async(
+                    user_id=session.user_id,
+                    session_id=session.id,
+                    new_message=types.Content(role="user", parts=[types.Part(text="What's the weather in Seattle?")]),
+                ):
+                    pass
+            finally:
+                workflow_metric_attributes = {"gen_ai.workflow.name": runner.app_name}
+                _workflow_inference_calls.record(call_counts["inference"], workflow_metric_attributes)
+                _workflow_tool_calls.record(call_counts["tool"], workflow_metric_attributes)
+
+    with _suppress_adk_native_telemetry():
+        asyncio.run(_run())
 
 
 def run_memory_reference():
@@ -405,6 +462,7 @@ def main():
     tp.add_span_processor(span_counter)
 
     run_agent_reference()
+    run_workflow_reference()
     run_memory_reference()
 
     print(f"\n  [diagnostic] Spans generated: {span_counter.count}")

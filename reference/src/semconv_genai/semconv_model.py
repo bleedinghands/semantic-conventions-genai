@@ -48,12 +48,8 @@ _EVENTS = {
     "gen_ai.evaluation.result": "Evaluation Result",
 }
 
-# This list records the metrics the reference scenarios emit, which is a
-# narrower set than an instrumentation should emit. The `gen_ai.client.*`
-# metrics are a single-span read, tracked here because agent-framework and
-# anthropic emit them. The `invoke_agent` histograms attribute each call to a
-# single agent invocation (#336), while the `invoke_workflow` histograms
-# attribute each call to its own workflow execution and every enclosing one.
+# Metrics emitted by the reference scenarios. This is not a list of all metrics
+# an instrumentation should emit.
 _METRICS = {
     "gen_ai.client.token.usage": "Client Token Usage",
     "gen_ai.client.operation.duration": "Client Operation Duration",

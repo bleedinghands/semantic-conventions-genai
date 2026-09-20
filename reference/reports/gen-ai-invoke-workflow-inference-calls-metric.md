@@ -6,7 +6,9 @@
 
 | Attribute | Supporting Libraries |
 | --- | --- |
-| gen_ai.workflow.name | [google-adk], [openai-agents] |
+| gen_ai.workflow.name | [crewai], [google-adk], [langchain], [openai-agents] |
 
+[crewai]: ../scenarios/crewai/scenario.py
 [google-adk]: ../scenarios/google-adk/scenario.py
+[langchain]: ../scenarios/langchain/scenario.py
 [openai-agents]: ../scenarios/openai-agents/scenario.py

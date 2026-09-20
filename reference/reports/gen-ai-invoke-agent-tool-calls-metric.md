@@ -6,7 +6,6 @@
 
 | Attribute | Supporting Libraries |
 | --- | --- |
-| gen_ai.agent.name | [google-adk], [openai-agents] |
+| gen_ai.agent.name | [google-adk] |
 
 [google-adk]: ../scenarios/google-adk/scenario.py
-[openai-agents]: ../scenarios/openai-agents/scenario.py
